@@ -1,0 +1,97 @@
+---
+# Set a version for this new box.
+- name: Set version from ansible-vars
+  set_fact:
+    new_box_version: "{{versions}}"
+  when: versions != ""
+  tags:
+    - win-build
+
+- block:
+  - name: Get current box version from Vagrant.
+    uri:
+      url: https://app.vagrantup.com/api/v1/box/rdf/{{ item | regex_replace('-jupyter-devops$','-devops') | regex_replace('-jupyter-devops-xdesktop$','-xdesktop') }}
+      return_content: true
+    register: box_info
+
+  - name: Set the current version of the base box.
+    set_fact:
+      current_box_version: "{{ (box_info.content | from_json).current_version.version }}"
+
+  - name: Set the next minor version of the base box.
+    set_fact:
+      new_box_version: >-
+        {{ current_box_version.split('.')[0] }}.{{ current_box_version.split('.')[1] }}.{{ current_box_version.split('.')[2] | int + 1 }}
+  tags:
+    - win-build
+  when: versions == ""
+
+- name: Print info about current box.
+  debug:
+    msg: "Building new rdf/{{ item }} box version {{ new_box_version }}"
+  tags:
+    - win-build
+
+# ToDo: Remove hardcoded ubuntu2004-de
+- name: Templating ubuntu2004-de box-config.json
+  template:
+    src: ubuntu2004-box-config.json.j2
+    dest: ubuntu2004/box-config.json
+  when: '"ubuntu2004" in item'
+  tags:
+    - win-build
+
+- name: Templating version in cleanup script vor ubuntu2004
+  template:
+    src: cleanup.sh.j2
+    dest: ubuntu2004/scripts/cleanup.sh
+  when: '"ubuntu2004" in item'
+
+- name: Templating ubuntu2004 Vagrantfile
+  template:
+    src: ubuntu2004-Vagrantfile.j2
+    dest: "ubuntu2004/Vagrantfile{{ item | regex_replace('ubuntu2004','') }}"
+  tags:
+    - win-build
+
+# Build and push the new box.
+# ToDo: Remove hardcoded for
+#       packer-ubuntu-20.04-amd64
+- name: Make ensure that older build directories are removed
+  file:
+    path: "{{ item | regex_replace('-devops','') | regex_replace('-de','') | regex_replace('-jupyter','') | regex_replace('-xdesktop','') }}/output-virtualbox-iso/"
+    state: absent
+
+- name: Make ensure that older build directories are removed
+  file:
+    path: "{{ item | regex_replace('-devops','') | regex_replace('-de','') | regex_replace('-jupyter','') | regex_replace('-xdesktop','') | regex_replace('-sa','') }}/output-vagrant/"
+    state: absent
+
+- name: Lookup for VMs is registered
+  shell: >
+    VBoxManage list vms |
+    grep packer-ubuntu-20.04-amd64 |
+    cut -d '"' -f 2
+  register: packer_registered
+  ignore_errors: yes
+
+- debug:
+    var: packer_registered
+    verbosity: 1
+
+- name: Unregister VM if exists
+  command: >
+    VBoxManage unregistervm --delete
+    {{packer_registered.stdout | default('packer-ubuntu-20.04-amd64, true')}}
+  when: packer_registered.stdout != ""
+
+- name: Build and push the box using Packer.
+  command: >
+    packer build
+    -var 'version={{ new_box_version }}'
+    box-config.json
+  args:
+    chdir: "{{ item | regex_replace('-devops','') | regex_replace('-de','') | regex_replace('-jupyter','') | regex_replace('-xdesktop','') | regex_replace('-sa','')}}"
+  environment:
+    PACKER_LOG: 1
+    PACKER_LOG_PATH: packer.log

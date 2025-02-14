@@ -1,0 +1,166 @@
+---
+- hosts: all
+  #become: yes
+  gather_facts: yes
+  vars:
+  - container_prefix: "test-container-"
+  - lxc_templates:
+    - name: ubuntu
+      release: focal
+    - name: debian
+      release: bullseye
+    #- alpine
+    #- centos
+    #- fedora
+  # Install Docker
+  roles:
+    - role: angstwad.docker_ubuntu
+      become: yes
+      # Place to get apt repository key
+      apt_key_url: "https://download.docker.com/linux/ubuntu/gpg"
+      # apt repository key signature
+      apt_key_sig: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+      # apt keyring file
+      keyring: "/etc/apt/trusted.gpg.d/docker.gpg"
+      docker_group_members:
+        - "{{ansible_user_id}}"
+      # Flags for whether to install pip packages
+      pip_install_pip: true
+      pip_install_setuptools: true
+      # pip_install_docker is ignored if pip_install_docker_compose is true as docker-compose as a dependency over docker.
+      # See var/main.yml for more information.
+      pip_install_docker: true
+      pip_install_docker_compose: true
+      tags:
+        - docker
+
+  tasks:
+    - block:
+      - name: "Install lxc-dev needed packages"
+        become: yes
+        apt:
+          name:
+            - lxc
+            - lxc-templates
+            - python3-lxc
+            - openvswitch-switch
+            #- lvm2
+            #- btrfs-tools
+            #- zfsutils-linux
+            #- libvirt-bin
+            #- libvirt-dev
+            #- python-libvirt
+            - python3-libvirt
+            - virtinst
+            # Not in bionic
+            #- cgmanager
+            - cgroup-lite
+            - debootstrap
+            - bridge-utils
+            #- yum
+            #- rpm
+            # - zypper
+            - qemu-user-static
+            #- haproxy
+            #- open-iscsi
+            - debian-archive-keyring
+            #- redis-server
+            #- rabbitmq-server
+            # ToDo dnsmasq deaktivieren wegen systemd-resolv
+            #- dnsmasq
+          state: present
+          update_cache: yes
+          cache_valid_time: 3600
+
+      - name: "Extend ubuntu template"
+        become: yes
+        replace:
+            regexp: "apt-transport-https,ssh,vim\""
+            # The regular expression to look for in the contents of the file.
+            # Uses Python regular expressions;
+            # see U(http://docs.python.org/2/library/re.html).
+            # Uses multiline mode, which means C(^) and C($) match the beginning
+            # and end respectively of I(each line) of the file.
+            dest: "/usr/share/lxc/templates/lxc-ubuntu"
+            # The file to modify.
+            replace: "apt-transport-https,ssh,vim,manpages,man-db,bash-completion,whois,acl,python3,python3-apt,dnsutils,nmap,nginx,python3-flask,tree,wget,ca-certificates,npm,yamllint\""
+        #ignore_errors: yes
+
+      - name: "Extend debian template without mongodb"
+        become: yes
+        replace:
+            regexp: "^openssh-server.*$"
+            dest: "/usr/share/lxc/templates/lxc-debian"
+            replace: "apt-transport-https,ssh,vim,manpages,man-db,bash-completion,whois,acl,python3,python3-apt,dnsutils,nmap,nginx,python3-flask,tree,wget,ca-certificates,sudo,openssh-server,iputils-ping,npm"
+
+      - name: Create a stopped container
+        become: yes
+        lxc_container:
+          name: "{{container_prefix}}{{item.name}}"
+          container_log: true
+          template: "{{item.name}}"
+          state: stopped
+          template_options: --release {{item.release}}
+        with_items: "{{lxc_templates}}"
+        #ignore_errors: yes
+        tags:
+          - testing
+
+      - name: Remove container
+        become: yes
+        lxc_container:
+          name: "{{container_prefix}}{{item.name}}"
+          container_log: true
+          template: "{{item.name}}"
+          state: absent
+        with_items: "{{lxc_templates}}"
+        #ignore_errors: yes
+      tags:
+        - lxc-dev
+
+    - block:
+      - name: "Start docker deamon"
+        become: yes
+        service:
+          name: docker
+          state: started
+
+      #- name: pull a docker image
+      #  become: yes
+      #  docker_image:
+      #    name: asciinema/asciicast2gif
+      #    source: pull
+
+      #- name: asciicast2gif in bashrc
+      #  blockinfile:
+      #    path: "{{ansible_user_dir}}/.bashrc"
+      #    marker: "# {mark} ANSIBLE MANAGED BLOCK extended"
+      #    block: |
+      #      function asciicast2giff  {
+      #        docker run --rm -v $PWD:/data asciinema/asciicast2gif -s 1 -t solarized-dark -h 29 -w 90 ${1} ${1%%.*}.gif
+      #      }
+      #      export -f asciicast2giff
+
+    #- block:
+    #  - name: "Start docker deamon"
+    #    become: yes
+    #    service:
+    #      name: docker
+    #      state: started
+    #  - name: Clone codespace.io
+    #    git:
+    #      dest: "{{ansible_user_dir}}/codespace"
+    #      repo: https://github.com/codespaces-io/codespaces.git
+    #  - name: Pull codespace.io
+    #    become: yes
+    #    command: docker-compose pull
+    #    args:
+    #      chdir: "{{ansible_user_dir}}/codespace/cs-ansible"
+    #  tags:
+    #    - codespace
+
+    #- name: Workaround docker-compose
+    #  become: yes
+    #  pip:
+    #    name: docker-compose
+    #    executable: pip3

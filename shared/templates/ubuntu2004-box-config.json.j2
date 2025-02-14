@@ -1,0 +1,350 @@
+#jinja2:variable_start_string:'[%', variable_end_string:'%]', trim_blocks: False
+
+{
+  "variables": {
+    "pre_boxe": "[% pre_boxe | default('', true) %]",
+    "version": "",
+    "vagrant_cloud_token": "{{env `VAGRANT_CLOUD_TOKEN`}}"
+  },
+  "provisioners": [
+{%- if "-" not in item %}
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=base-1.0" ]
+    },
+    {
+      "type": "shell-local",
+      "inline": ["for i in $(vagrant box list | grep -E '^builds' | cut -d ' ' -f 1); do vagrant box remove $i; done"]
+    },
+    {
+      "type": "shell",
+      "execute_command": "echo 'vagrant' | {{.Vars}} sudo -S -E bash '{{.Path}}'",
+      "script": "scripts/ansible.sh"
+    },
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=ansible-1.0" ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "echo 'vagrant' | {{.Vars}} sudo -S -E bash '{{.Path}}'",
+      "script": "scripts/setup.sh"
+    },
+
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/main.yml",
+      "galaxy_file": "../shared/requirements.yml",
+      "extra_arguments": [ "--user vagrant", "-vv" ]
+    },
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=base-2.0" ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/base/main.yml",
+      "galaxy_file": "../shared/base/requirements.yml",
+      "playbook_dir": "../shared/base",
+      "staging_directory": "/tmp/base",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=base-3.0" ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/theia/main.yml",
+      "galaxy_file": "../shared/theia/requirements.yml",
+      "playbook_dir": "../shared/theia",
+      "staging_directory": "/tmp/theia",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=theia_ide-1.0" ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/platformio/main.yml",
+      "playbook_dir": "../shared/platformio",
+      "staging_directory": "/tmp/platformio",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=base-pio-1.0" ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/nodered/main.yml",
+      "playbook_dir": "../shared/nodered",
+      "staging_directory": "/tmp/nodered",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=nodered-1.0" ]
+    },
+{%- endif %}
+{%- if item | regex_search('-de$') %}
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=base-3.0" ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "echo 'vagrant' | {{.Vars}} sudo -S -E bash '{{.Path}}'",
+      "script": "scripts/locale-de.sh"
+    },
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=base-3.0" ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/platformio/main.yml",
+      "playbook_dir": "../shared/platformio",
+      "staging_directory": "/tmp/platformio",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=base-3.0" ]
+    },
+{%- endif %}
+{%- if item | regex_search('-xdesktop$') %}
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/xdesktop/main.yml",
+      "galaxy_file": "../shared/xdesktop/requirements.yml",
+      "playbook_dir": "../shared/xdesktop",
+      "staging_directory": "/tmp/xdesktop",
+      "galaxy_roles_path": "/tmp/xdesktop/roles",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/electronics/main.yml",
+      "galaxy_file": "../shared/electronics/requirements.yml",
+      "playbook_dir": "../shared/electronics",
+      "staging_directory": "/tmp/electronics",
+      "galaxy_roles_path": "/tmp/eoectronics/roles",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+{%- endif %}
+{%- if item | regex_search('-devops$') %}
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/extended/main.yml",
+      "galaxy_file": "../shared/extended/requirements.yml",
+      "playbook_dir": "../shared/extended",
+      "staging_directory": "/tmp/extended",
+      "galaxy_roles_path": "/tmp/extended/roles",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=extended-1.0", "--sudo" ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/devops/main.yml",
+      "galaxy_file": "../shared/devops/requirements.yml",
+      "playbook_dir": "../shared/devops",
+      "staging_directory": "/tmp/devops",
+      "galaxy_roles_path": "/tmp/devops/roles",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+{%- endif %}
+{%- if item | regex_search('-sa$') %}
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/sa/main-ubuntu_2004_de_sa.yml",
+      "galaxy_file": "../shared/sa/requirements-ubuntu_2004_de_sa.yml",
+      "playbook_dir": "../shared/sa/",
+      "staging_directory": "/tmp/",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+{%- endif %}
+{%- if item | regex_search('-jupyter$') %}
+    {
+      "type": "ansible-local",
+      "playbook_file": "../shared/jupyter/main.yml",
+      "galaxy_file": "../shared/jupyter/requirements.yml",
+      "playbook_dir": "../shared/jupyter",
+      "staging_directory": "/tmp/jupyter",
+      "galaxy_roles_path": "/tmp/jupyter/roles",
+      "extra_arguments": [
+        "--skip-tags not_needed,todo",
+        "--extra-vars 'ansible_python_interpreter=/usr/bin/python3'"
+      ]
+    },
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=jupyter-1.0" ]
+    },
+{%- endif %}
+    {
+      "type": "inspec",
+      "profile": "./inspec/ubuntu2004",
+      "extra_arguments": [ "--controls=base-3.0" ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "echo 'vagrant' | {{.Vars}} sudo -S -E bash '{{.Path}}'",
+      "script": "scripts/cleanup.sh"
+    }
+  ],
+  "builders": [
+{%- if "-" in item %}
+  {
+    "type": "vagrant",
+  {%- if "xdesktop" in item %}
+    "source_path": "builds/virtualbox-ubuntu2004-de-jupyter-devops.box",
+  {%- elif "devops" in item %}
+    "source_path": "builds/virtualbox-ubuntu2004-de-jupyter.box",
+  {%- elif "jupyter" in item %}
+    "source_path": "builds/virtualbox-ubuntu2004-de.box",
+  {%- elif 'de-sa' in item %}
+    "source_path": "builds/virtualbox-ubuntu2004-{{user `pre_boxe`}}.box",
+  {%- else %}
+    "source_path": "builds/virtualbox-ubuntu2004.box",
+  {%- endif %}
+    "box_name": "[%item%]",
+    "add_force": true,
+    "provider": "virtualbox",
+    "template": "Vagrantfile.template",
+    "communicator": "ssh"
+  }
+{%- else %}
+  {
+    "type": "virtualbox-iso",
+    "boot_command": [
+      "<esc><wait>",
+      "<esc><wait>",
+      "<enter><wait>",
+      "/install/vmlinuz",
+      " auto=true",
+      " url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg",
+      " locale=en_US<wait>",
+      " console-setup/ask_detect=false<wait>",
+      " console-setup/layoutcode=us<wait>",
+      " console-setup/modelcode=pc105<wait>",
+      " debconf/frontend=noninteractive<wait>",
+      " debian-installer=en_US<wait>",
+      " fb=false<wait>",
+      " initrd=/install/initrd.gz<wait>",
+      " kbd-chooser/method=us<wait>",
+      " keyboard-configuration/layout=USA<wait>",
+      " keyboard-configuration/variant=USA<wait>",
+      " netcfg/get_domain=vm<wait>",
+      " netcfg/get_hostname=vagrant<wait>",
+      " grub-installer/bootdev=/dev/sda<wait>",
+      " noapic<wait>",
+      " -- <wait>",
+      "<enter><wait>"
+    ],
+    "boot_wait": "10s",
+    "disk_size": 81920,
+    "guest_os_type": "Ubuntu_64",
+    "headless": true,
+    "http_directory": "http",
+    "iso_urls": [
+      "iso/focal-legacy-server-amd64.iso",
+      "http://cdimage.ubuntu.com/ubuntu-legacy-server/releases/20.04/release/ubuntu-20.04.1-legacy-server-amd64.iso"
+    ],
+    "iso_checksum": "sha256:f11bda2f2caed8f420802b59f382c25160b114ccc665dbac9c5046e7fceaced2",
+    "ssh_username": "vagrant",
+    "ssh_password": "vagrant",
+    "ssh_port": 22,
+    "ssh_wait_timeout": "1800s",
+    "shutdown_command": "echo 'vagrant'|sudo -S shutdown -P now",
+    "guest_additions_path": "VBoxGuestAdditions_{{.Version}}.iso",
+    "virtualbox_version_file": ".vbox_version",
+    "vm_name": "packer-ubuntu-20.04-amd64",
+    "vboxmanage": [
+      [
+        "modifyvm",
+        "{{.Name}}",
+        "--memory",
+        "4096"
+      ],
+      [
+        "modifyvm",
+        "{{.Name}}",
+        "--cpus",
+        "2"
+      ]
+    ]
+  }
+{%- endif %}
+],
+  "post-processors": [
+{%- if "-" not in item %}
+  [
+    {
+      "output": "builds/{{.Provider}}-[% item %].box",
+      "type": "vagrant"
+    }{% if VAGRANT_CLOUD_TOKEN %},{% endif %}
+{%- else %}
+  {
+    "type": "shell-local",
+    "inline": ["cp ./output-vagrant/package.box ./builds/virtualbox-[% item %].box"]
+  },
+  [
+{%- endif %}
+{%- if VAGRANT_CLOUD_TOKEN %}
+    {
+      "type": "vagrant-cloud",
+      "box_tag": "rdf/[% item | regex_replace('-jupyter-devops$','-devops') | regex_replace('-jupyter-devops-xdesktop$','-xdesktop') %]",
+      "version": "{{user `version`}}",
+      "access_token": "{{user `vagrant_cloud_token`}}"
+    }
+{%- endif %}
+    ]
+  ]
+}

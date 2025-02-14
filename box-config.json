@@ -1,0 +1,31 @@
+{
+  "variables": {
+    "version": "",
+    "vagrant_cloud_token": "{{env `VAGRANT_CLOUD_TOKEN`}}"
+  },
+  "provisioners": [
+    {
+      "type": "shell",
+      "execute_command": "echo 'vagrant' | {{.Vars}} sudo -S -E bash '{{.Path}}'",
+      "script": "scripts/cleanup.sh"
+    }
+  ],
+  "builders": [
+  {
+    "type": "vagrant",
+    "source_path": "doitpib/ubuntu-desktop-noble-de",
+    "box_name": "doitpib/ubuntu-desktop-noble-de",
+    "provider": "virtualbox",
+    "template": "Vagrantfile.template",
+    "communicator": "ssh"
+  }
+],
+  "post-processors": [
+  {
+    "type": "shell-local",
+    "inline": ["cp ./output-vagrant/package.box ./builds/doitpib/ubuntu-desktop-noble-de"]
+  },
+  [
+    ]
+  ]
+}

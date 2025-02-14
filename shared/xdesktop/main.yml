@@ -1,0 +1,300 @@
+---
+  - hosts: all
+    vars:
+      ros_user:
+          name: "{{ansible_user_id}}"
+          group: "{{ansible_user_id}}"
+      ros2_user:
+          name: "{{ansible_user_id}}"
+          group: "{{ansible_user_id}}"
+      ros_configuration: desktop
+      ros_distribution: noetic
+      ros2_distribution: foxy
+      #ros_workspaces:
+      #  catkin_ws: "catkin_ws_{{ros_distribution}}"
+      dev_ws: "catkin_ws_{{ros2_distribution}}"
+      ros_packages:
+        - ros-base
+        - urdf
+        - tf
+        #- turtlebot3-navigation
+        #- turtlebot3
+        - turtlebot3-msgs
+        #- gazebo-ros
+        - ros-tutorials
+        - rqt
+        - rqt-common-plugins
+        - turtlesim
+      ros2_packages: []
+
+    roles:
+
+    - role: rarrais.ros
+      become: yes
+      tags:
+        - ros
+
+    - role: rarrais.ros2
+      become: yes
+      tags:
+        - ros
+
+    - role: gantsign.xdesktop
+      become: yes
+      tags:
+        - desktop
+        - not_A119
+
+    #
+    # Install Atom editor
+    - role: gantsign.atom
+      become: yes
+      users:
+        - username: "{{ ansible_user_id }}"
+          atom_packages:
+            - atom-ros
+          #  - ansible-snippets
+          #  - editorconfig
+          #  - minimap
+          #  - linter
+          #  - linter-ui-default
+          #  - busy-signal
+          #  - intentions
+          #  - atom-beautify
+          #  - file-icons
+          #  - atom-ide-ui
+          #  - ide-typescript
+          #  - ide-json
+          #  - ide-yaml
+          #  - ide-css
+          #  - ide-html
+          #  - ide-python
+          #  - atom-jinja2
+          #  - autocomplete-ansible
+          #  - linter-ansible-linting
+          #  - platformio-ide-terminal
+          #  #- platformio-ide
+          #  #- platformio-ide-debugger
+          atom_config:
+            "*":
+              "atom-ide-ui":
+                use: {}
+              "autocomplete-ansible":
+                pythonPaths: "/home/vagrant/.virtualenvs/$PROJECT_NAME/bin/python;$PROJECT/venv/bin/python;/usr/bin/python"
+              core:
+                disabledPackages: [
+                  "linter"
+                ]
+                projectHome: "/home/vagrant/workspace"
+                telemetryConsent: "no"
+              editor:
+                showIndentGuide: true
+                showInvisibles: true
+              welcome:
+                showOnStartup: false
+      tags:
+        - desktop
+        - atom
+        - not_needed
+
+    # Install Go package for Atom
+    #- role: gantsign.atom-packages
+    #  become: yes
+    #  tags:
+    #    - desktop
+    #    - atom
+    #    - golang
+    #  users:
+    #    - username: vagrant
+    #      atom_packages:
+    #        - go-plus
+
+    # Install Go language SDK
+    #- role: gantsign.golang
+    #  become: yes
+    #  tags:
+    #    - golang
+    #  golang_gopath: '$HOME/workspace-go'
+
+    tasks:
+    - name: Disable Suspend And Hibernation In Linux
+      become: yes
+      command: systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+      tags:
+        - not_A119
+
+    - name: Network-manager dismiss
+      become: yes
+      apt:
+        name: network-manager
+        state: absent
+        purge: yes
+      tags:
+        - not_A119
+
+    - name: Autologin for {{ansible_user_id}}
+      become: yes
+      blockinfile:
+        path: /etc/gdm3/custom.conf
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+        insertafter: "# Enabling automatic login"
+        block: |
+          AutomaticLoginEnable = true
+          AutomaticLogin = {{ansible_user_id}}
+      tags:
+        - not_A119
+
+    - name: Desktop Block
+      block:
+      - name: "Install desktop needed packages"
+        become: yes
+        apt:
+            name:
+              - hunspell-de-ch
+              - wogerman
+              - hunspell-de-at
+              - hunspell-en-us
+              - wbritish
+              - hunspell-de-de
+              - language-pack-gnome-de
+              - wngerman
+              - hunspell-en-au
+              - wswiss
+              - hunspell-en-za
+              - hunspell-en-ca
+              - wamerican
+              - hunspell-en-gb
+              - file-roller
+              - clang
+              - texworks
+              - gnome-terminal
+              - firefox
+              - firefox-locale-de
+              - geogebra
+            state: present
+            update_cache: yes
+            cache_valid_time: 3600
+
+      - name: Deactivate powweroff dialog
+        command: "{{item}}"
+        with_items:
+            # - "gsettings set com.canonical.indicator.session suppress-logout-restart-shutdown true"
+            - "gsettings set org.gnome.settings-daemon.plugins.power button-power 'shutdown'"
+        tags:
+          - not_A119
+      tags:
+        - desktop
+
+    # Ros Abschnitt
+    - block:
+      - name: "Install ros needed packages"
+        become: yes
+        apt:
+          name:
+            - "ros-{{ros_distribution}}-catkin"
+            - python3-catkin-tools
+
+      - name: stat catkin_ws
+        stat:
+          path: "{{ansible_user_dir}}/catkin_ws"
+        register: catkin_ws_stat
+
+      - name: stat catkin_ws_release
+        stat:
+          path: "{{ansible_user_dir}}/catkin_ws_{{ros_distribution}}"
+        register: catkin_ws_stat_release
+
+      - name: "Move catkin_ws to catkin_ws_{{ros_distribution}}"
+        command: "mv {{ansible_user_dir}}/catkin_ws {{ansible_user_dir}}/catkin_ws_{{ros_distribution}}"
+        when: catkin_ws_stat.stat.exists and not catkin_ws_stat_release.stat.exists
+
+      - name: "Remove catkin_ws to catkin_ws_{{ros_distribution}}"
+        command: "rm -rf {{ansible_user_dir}}/catkin_ws"
+        when: catkin_ws_stat.stat.exists and catkin_ws_stat_release.stat.exists
+
+      - name: Workaround für amd64 in ros2 apt source
+        become: yes
+        lineinfile:
+          path: /etc/apt/sources.list.d/ros2-latest.list
+          line: '\1[arch=amd64] \2'
+          regexp: '^(deb ).*(http.*$)'
+          backrefs: yes
+
+      - name: Set Alias for ros1/2
+        lineinfile:
+          path: "{{ansible_user_dir}}/.bashrc"
+          line: 'alias initros_{{item.dist}}="\1"'
+          regexp: '^(source /opt/ros/{{item.dist}}/setup.bash)'
+          backrefs: yes
+        with_items:
+          - dist: "{{ros_distribution}}"
+            path: devel
+          - dist: dashing
+            path: install
+
+      - name: Remove ros setup
+        lineinfile:
+          path: "{{ansible_user_dir}}/.bashrc"
+          state: absent
+          regexp: '^source.*{{item}}.*$'
+        with_items:
+          - catkin
+
+      - name: Setup moveit directory
+        file:
+          path: "{{ansible_user_dir}}/ws_moveit/src"
+          state: directory
+          recurse: yes
+        tags:
+          - not_needed
+
+      - name: Create A Catkin Workspace and Download MoveIt Source
+        shell: source /opt/ros/{{ ros_distribution }}/setup.bash && wstool init . && wstool merge -t . https://raw.githubusercontent.com/ros-planning/moveit/master/moveit.rosinstall && wstool update -t .
+        args:
+          chdir: "{{ ansible_user_dir}}/ws_moveit/src"
+          executable: /bin/bash
+        tags:
+          - not_needed
+
+      - name:
+        git:
+          dest: "{{ ansible_user_dir}}/ws_moveit/src/{{item.path}}"
+          repo: "{{item.repo}}"
+          version: "{{item.version}}"
+          update: no
+        with_items:
+          - repo: https://github.com/ros-planning/moveit_tutorials.git
+            version: master
+            path: moveit_tutorials
+          - repo:  https://github.com/ros-planning/panda_moveit_config.git
+            version: melodic-devel
+            path: panda_moveit_config
+        tags:
+          - not_needed
+
+      - name: Build your Catkin Workspace
+        shell: "source /opt/ros/{{ ros_distribution }}/setup.bash && rosdep install -y --from-paths . --ignore-src --rosdistro {{ros_distribution}}"
+        args:
+          chdir: "{{ ansible_user_dir}}/ws_moveit/src"
+          executable: /bin/bash
+        tags:
+          - not_needed
+
+      - name: Config your Catkin Workspace
+        shell: source /opt/ros/{{ ros_distribution }}/setup.bash && catkin config --extend /opt/ros/{{ ros_distribution }} --cmake-args -DCMAKE_BUILD_TYPE=Release
+        args:
+          chdir: "{{ ansible_user_dir}}/ws_moveit/"
+          executable: /bin/bash
+        tags:
+          - not_needed
+
+      - name: Build your Catkin Workspace
+        shell: source /opt/ros/{{ ros_distribution }}/setup.bash && catkin build
+        args:
+          chdir: "{{ ansible_user_dir}}/ws_moveit/"
+          executable: /bin/bash
+        tags:
+          - not_needed
+      tags:
+        - ros
+        - not_A119

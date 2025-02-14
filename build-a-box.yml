@@ -1,0 +1,56 @@
+---
+- hosts: local
+  vars:
+    versions: ""
+
+  tasks:
+
+  # Set a version for this new box.
+  - name: Set version from ansible-vars
+    set_fact:
+      new_box_version: "{{versions}}"
+    when: versions != ""
+    tags:
+      - doitros2
+
+  - block:
+    - name: Get current box version from Vagrant.
+      uri:
+        url: 'https://vagrantcloud.com/api/v2/vagrant/doitpib/ubuntu-desktop-noble-de'
+        return_content: true
+      register: box_info
+
+    - ansible.builtin.debug:
+        var: box_info 
+
+    - name: Set the current version of the base box.
+      set_fact:
+        current_box_version: "{{ (box_info.content | from_json).versions[0].version }}"
+
+    - shell: date +"%Y.%m.%d-%H"
+      register: current_date
+      changed_when: false
+
+    - set_fact:
+        new_box_version: "{{ current_date.stdout.strip() }}"
+
+    - debug:
+        var: new_box_version
+    tags:
+      - doitros2
+    when: versions == ""
+
+  - name: Print info about current box.
+    debug:
+      msg: "Building new doitpib/ubuntu-desktop-noble-de box version {{ new_box_version }}"
+    tags:
+      - doitros2
+
+  - name: Build and push the box using Packer.
+    command: >
+      packer build
+      -var 'version={{ new_box_version }}'
+      box-config.json
+    environment:
+      PACKER_LOG: 1
+      PACKER_LOG_PATH: packer.log

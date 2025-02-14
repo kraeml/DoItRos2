@@ -1,0 +1,91 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.ssh.insert_key = false
+  config.vm.synced_folder '.', '/vagrant'
+
+  # VirtualBox.
+  config.vm.define "virtualbox" do |virtualbox|
+
+    virtualbox.vm.hostname = "virtualbox-{{item}}"
+    virtualbox.vm.box = "file://builds/virtualbox-{{item}}.box"
+
+    virtualbox.vm.network :private_network, ip: "172.16.3.21"
+
+    config.vm.provider :virtualbox do |vb|
+      # Display the VirtualBox GUI when booting the machine
+      #vb.gui = config.user.virtualbox.gui
+{% if "-xdesktop" in item %}
+      vb.gui = true
+      # Customize graphics settings
+      #vb.customize ['modifyvm', :id, '--vram', config.user.virtualbox.vram]
+      #vb.customize ['modifyvm', :id, '--accelerate3d', config.user.virtualbox.accelerate3d]
+      #"vram" => "32",
+      #"accelerate3d" => "off"
+      vb.customize ['modifyvm', :id, '--vram', '32']
+      vb.customize ['modifyvm', :id, '--accelerate3d', 'off']
+
+      # Enable host desktop integration
+      #vb.customize ["modifyvm", :id, "--clipboard", config.user.virtualbox.clipboard]
+      #vb.customize ["modifyvm", :id, "--draganddrop", config.user.virtualbox.draganddrop]
+      #"clipboard" => "bidirectional",
+      #"draganddrop" => "bidirectional",
+      vb.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
+      vb.customize ["modifyvm", :id, "--draganddrop", "bidirectional"]
+
+      vb.customize ["modifyvm", :id, "--usbxhci", "on"]
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'Leonardo', '--vendorid', '0x2341', '--productid', '0x8036']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'Leonardo_Prog', '--vendorid', '0x2341', '--productid', '0x0036']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'megaADK', '--vendorid', '0x2341', '--productid', '0x003f']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'uno', '--vendorid', '0x2341', '--productid', '0x0043']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'mega2560', '--vendorid', '0x2341', '--productid', '0x0010']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'ftduino', '--vendorid', '0x1c40', '--productid', '0x0538']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'ftduino_prog', '--vendorid', '0x1c40', '--productid', '0x0537']
+      # vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'ProgBob', '--vendorid', '0x16C0', '--productid', '0x0933']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'ESP32Thing', '--vendorid', '0x0403', '--productid', '0x6015']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'D1', '--vendorid', '0x1A86', '--productid', '0x7523']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'heltec_wifi_lora_32', '--vendorid', '0x10C4', '--productid', '0xEA60']
+      # vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'playground_express', '--vendorid', '0x239A', '--productid', '0x8018']
+      # vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'playground_express_prog', '--vendorid', '0x239A', '--productid', '0x0018']
+      # vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'Vidor_4000', '--vendorid', '0x2341', '--productid', '0x8056']
+      # vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'Vidor_4000_prog', '--vendorid', '0x2341', '--productid', '0x0056']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'blackiceII', '--vendorid', '0x1A86', '--productid', '0x7523']
+      vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'blackiceII STM32 Virtual ComPort', '--vendorid', '0x0483', '--productid', '0x5740']
+{%- else %}
+      vb.gui = false
+{%- endif %}
+
+      # Give the VM a name
+      #vb.name = config.user.virtualbox.name
+
+      # Customize the amount of memory on the VM
+      #vb.memory = config.user.virtualbox.memory
+      #"memory" => "2048"
+      vb.memory = 2048
+
+      # Customize CPU settings
+      #vb.cpus = config.user.virtualbox.cpus
+      #"cpus" => 2
+      vb.cpus = 2
+
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+      vb.customize ["modifyvm", :id, "--ioapic", "on"]
+
+      # Enable the VM's virtual USB controller & enable the virtual USB 2.0 controller
+      #vb.customize ["modifyvm", :id, "--usb", "on", "--usbehci", "on"]
+      vb.customize ["modifyvm", :id, "--usb", "on", "--usbehci", "on"]
+
+      #"audio" => default_vb_audio,
+      #"audiocontroller" => default_vb_audiocontroler
+      #unless config.user.virtualbox.audio.nil?
+      #  # Enable sound
+      #  vb.customize ['modifyvm', :id, '--audio', config.user.virtualbox.audio, '--audiocontroller', config.user.virtualbox.audiocontroller]
+      #end
+
+    end
+
+    config.vm.provision "shell", inline: "localectl; timedatectl status"
+  end
+
+end

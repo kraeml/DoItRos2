@@ -1,0 +1,119 @@
+---
+- hosts: all
+  #become: yes
+  gather_facts: yes
+
+  tasks:
+  - name: "Install needed packages"
+    become: yes
+    apt:
+      name:
+        - build-essential
+        - git
+        - mosquitto
+        - mosquitto-clients
+      state: present
+      update_cache: yes
+      cache_valid_time: 3600
+    tags:
+      - install
+
+  - name: Stat nodered dir
+    stat:
+      path: "/usr/bin/node-red-start"
+    register: nodered_file
+
+  - name: Get pltaformio installer script
+    get_url:
+      url: https://raw.githubusercontent.com/node-red/linux-installers/master/deb/update-nodejs-and-nodered
+      dest: /tmp/update-nodejs-and-nodered
+      mode: 0744
+
+    when: nodered_file.stat.islnk is not defined
+
+  - name: Execute the nodered installer script
+    command: /tmp/update-nodejs-and-nodered --confirm-install
+    args:
+      creates: "/usr/bin/node-red-start"
+    notify:
+      - restart_nodered
+
+  - name: Remove the nodered installer script
+    file:
+      path: /tmp/update-nodejs-and-nodered
+      state: absent
+
+  - name: Ensure node apt file exists
+    stat:
+      path: /etc/apt/sources.list.d/deb_nodesource_com_node_14_x.list
+    register: nodesource
+
+  - name: Remove noderes node apt source
+    become: yes
+    file:
+      path: /etc/apt/sources.list.d/nodesource.list
+      state: absent
+    when: nodesource.stat.exists
+
+  - name: Ensure nodred and some dependencies are installed
+    become: yes
+    npm:
+      name: "{{item}}"
+      global: yes
+    with_items:
+      - npm-check
+      - node-red-admin
+    tags:
+      - install
+
+  - name: Install node-red addons
+    npm:
+        name: "{{item}}"
+        state: present
+        path: "{{ansible_user_dir}}/.node-red"
+
+    with_items:
+      - node-red-dashboard
+      - node-red-contrib-bigtimer
+      #- node-red-node-mongodb
+      - node-red-node-mysql
+      - node-red-contrib-looptimer
+      #- node-red-node-pi-sense-hat
+      #- node-red-contrib-opcua
+      #- node-red-contrib-iiot-opcua
+      - node-red-contrib-solar-power-forecast
+      - node-red-node-openweathermap
+      - node-red-node-arduino
+      - johnny-five
+      #- node-red-contrib-gpio
+      - node-red-contrib-ros
+      - node-red-contrib-dockerode
+      - node-red-contrib-web-worldmap
+      - node-red-node-sqlite
+      - node-red-contrib-sqlstring
+    notify:
+      - rebuild_node_red
+      - restart_nodered
+
+  - name: Install learnyoubash
+    become: yes
+    npm:
+      name: "{{item}}"
+      global: yes
+      state: present
+    with_items:
+      - learnyoubash
+      - git-it
+
+  handlers:
+  - name: restart_nodered
+    become: yes
+    service:
+      name: nodered
+      state: restarted
+      enabled: yes
+
+  - name: rebuild_node_red
+    command: npm rebuild
+    args:
+      chdir: "{{ansible_user_dir}}/.node-red"

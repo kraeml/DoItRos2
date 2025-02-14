@@ -1,0 +1,65 @@
+---
+- hosts: all
+  #become: yes
+  gather_facts: yes
+  vars:
+    nodejs_version: "14.x"
+    npm_config_unsafe_perm: "true"
+    nodejs_npm_global_packages: []
+
+  pre_tasks:
+    - name: Update apt
+      become: yes
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  roles:
+    - role: geerlingguy.nodejs
+      become: yes
+    - role: kraeml.jupyter
+      become: yes
+      tags:
+        - python-dev
+        - jupyter
+
+  tasks:
+    - name: Ensure node apt file exists
+      stat:
+        path: /etc/apt/sources.list.d/deb_nodesource_com_node_14_x.list
+      register: nodesource
+
+    - name: Remove nodered node apt source
+      become: yes
+      file:
+        path: /etc/apt/sources.list.d/nodesource.list
+        state: absent
+      when: nodesource.stat.exists
+
+    - name: Disable Suspend And Hibernation In Linux
+      become: yes
+      command: systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+
+    - name: Ensure spellchecker config path exists
+      file:
+        state: directory
+        path: "{{ansible_user_dir}}/.jupyter/lab/user-settings/@ijmbarr/jupyterlab_spellchecker"
+
+    - name: Copy german spellchecker config
+      template:
+        src: plugin.jupyterlab-settings.j2
+        dest: "{{ansible_user_dir}}/.jupyter/lab/user-settings/@ijmbarr/jupyterlab_spellchecker/plugin.jupyterlab-settings"
+
+    - name: Install missing packages
+      become: yes
+      apt:
+        name:
+          - pandoc
+          - texlive-xetex
+
+    - name: Install pygments ToDo in Jupyter Rolle
+      become: yes
+      pip:
+        name: pygments
+        state: latest
+        executable: pip3

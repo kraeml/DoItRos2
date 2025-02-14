@@ -1,0 +1,242 @@
+---
+- hosts: all
+  #become: yes
+  gather_facts: yes
+  roles:
+    - role: gantsign.oh-my-zsh
+      users:
+        - username: "{{ ansible_user_id }}"
+          oh_my_zsh:
+            theme: robbyrussell
+          plugins:
+            - git
+            - python
+            - pip
+            - command-not-found
+            - docker
+            - dotenv
+            - git-flow
+            - systemd
+            - ubuntu
+            - vagrant
+            - virtualenv
+
+  tasks:
+    # ToDo Setup new entries in inspec via yaml
+    - name: Install Python3 packages
+      become: yes
+      pip:
+        name:
+          - shyaml
+
+    - name: "Install needed packages"
+      become: yes
+      apt:
+        name:
+          - git
+          - git-flow
+          - build-essential
+          - automake
+          - wget
+          - curl
+          - vim
+          - zsh
+          - fonts-powerline
+          - nano
+          - screen
+          - byobu
+          - htop
+          - tree
+          - rsync
+          - sqlite
+          - python3
+          - python3-pip
+          - python3-virtualenv
+          - python3-dev
+          - sshpass
+          - avahi-daemon
+          - avahi-utils
+          - nmap
+          - whois
+          - ipcalc
+          - dnsutils
+          - shellcheck
+          - bats
+          - python3-apt
+          - kpartx
+          - gdisk
+          - fdisk
+          - btrfs-progs
+          - rename
+          # ToDo unterschiede zum Paket traceroute feststellen
+          - inetutils-traceroute
+          - haveged
+          - asciinema
+          - jq
+          - expect
+          - mlocate
+          - convmv
+          - dos2unix
+          - unzip
+        state: present
+        update_cache: yes
+        cache_valid_time: 3600
+      tags:
+        - install
+
+    - name: Git config
+      git_config:
+        name: "{{item.name}}"
+        value: "{{item.value}}"
+        scope: global
+      with_items:
+        - name: "user.email"
+          value: "{{ ansible_user_id }}@example.com"
+        - name: "user.name"
+          value: "{{ ansible_user_id }}"
+        - name: "core.editor"
+          value: "vim"
+        - name: "push.default"
+          value: "simple"
+      tags:
+        - git
+
+    - name: Set login shell for {{ ansible_user_id }}
+      become: yes
+      user:
+        name: '{{ ansible_user_id }}'
+        shell: '/bin/bash'
+
+    - name: Configure screen
+      become: yes
+      lineinfile:
+        path: /etc/screenrc
+        regexp: '^caption always'
+        line: 'caption always "%{rw} * | %H * $LOGNAME | %{bw}%c %D | %{-}%-Lw%{rw}%50>%{rW}%n%f* %t %{-}%+Lw%<"'
+
+    # ToDo: insert .bash_prompt and .profile add lines to source it
+    - name: Copy using inline content
+      copy:
+        content: |
+            # @gf3’s Sexy Bash Prompt, inspired by “Extravagant Zsh Prompt”
+            # Shamelessly copied from https://github.com/gf3/dotfiles
+
+            default_username='unknown'
+            OSNAME="$(grep 'DISTRIB_CODENAME' /etc/lsb-release | cut -d = -f 2) "
+            PROMPTCHAR='\$'
+
+            if [[ $COLORTERM = gnome-* && $TERM = xterm ]] && infocmp gnome-256color >/dev/null 2>&1; then
+              export TERM=gnome-256color
+            elif infocmp xterm-256color >/dev/null 2>&1; then
+              export TERM=xterm-256color
+            fi
+
+            if tput setaf 1 &> /dev/null; then
+              tput sgr0
+              if [[ $(tput colors) -ge 256 ]] 2>/dev/null; then
+                BLUE=$(tput setaf 4)
+                MAGENTA=$(tput setaf 9)
+                ORANGE=$(tput setaf 172)
+                GREEN=$(tput setaf 70)
+                PURPLE=$(tput setaf 141)
+              else
+                BLUE=$(tput setaf 4)
+                MAGENTA=$(tput setaf 5)
+                ORANGE=$(tput setaf 3)
+                GREEN=$(tput setaf 2)
+                PURPLE=$(tput setaf 1)
+
+              fi
+              BOLD=$(tput bold)
+              RESET=$(tput sgr0)
+              else
+                BLUE="\033[1;34m"
+                MAGENTA="\033[1;31m"
+                ORANGE="\033[1;33m"
+                GREEN="\033[1;32m"
+                PURPLE="\033[1;35m"
+                BOLD=""
+                RESET="\033[m"
+              fi
+
+
+            function git_info() {
+              # check if we're in a git repo
+              git rev-parse --is-inside-work-tree &>/dev/null || return
+
+              # quickest check for what branch we're on
+              branch=$(git symbolic-ref -q HEAD | sed -e 's|^refs/heads/||')
+
+              # check if it's dirty (via github.com/sindresorhus/pure)
+              dirty=$(git diff --quiet --ignore-submodules HEAD &>/dev/null; [ $? -eq 1 ]&& echo -e "*")
+
+              echo "$RESET$BOLD on $PURPLE$branch$dirty"
+            }
+
+            # Only show username/host if not default
+            function usernamehost() {
+              if [ "$USER" != $default_username ]; then
+                echo "${BLUE}${OSNAME}${MAGENTA}$USER${RESET}${BOLD}@${ORANGE}$HOSTNAME${RESET}${BOLD} in ";
+              else
+                echo "${BLUE}${OSNAME}";
+              fi
+            }
+
+            # iTerm Tab and Title Customization and prompt customization
+            # http://sage.ucsc.edu/xtal/iterm_tab_customization.html
+
+            # Put the string " [bash]   hostname::/full/directory/path"
+            # in the title bar using the command sequence
+            # \[\e]2;[bash]   \h::\]$PWD\[\a\]
+
+            # Put the penultimate and current directory
+            # in the iterm tab
+            # \[\e]1;\]$(basename $(dirname $PWD))/\W\[\a\]
+
+
+            # show git info only on macOS, don't slow down on ARM devices
+            if [ "${OSNAME}" = bionic ]; then
+              PS1="\[\e]2;$PWD\[\a\]\[\e]1;\]$(basename "$(dirname "$PWD")")/\W\[\a\]${BOLD}$(usernamehost)\[$GREEN\]\w\$(git_info)\[$RESET\]\[$BOLD\]\n${PROMPTCHAR} \[$RESET\]"
+            else
+              PS1="\[\e]2;$PWD\[\a\]\[\e]1;\]$(basename "$(dirname "$PWD")")/\W\[\a\]${BOLD}$(usernamehost)\[$GREEN\]\w\[$RESET\]\[$BOLD\]\n${PROMPTCHAR} \[$RESET\]"
+            fi
+        dest: "{{ansible_user_dir}}/.bash_prompt"
+
+    - name: configure profile with bashrc
+      blockinfile:
+        path: "{{ansible_user_dir}}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK base"
+        block: |
+          if [ -f ~/.bash_prompt ]; then
+            . ~/.bash_prompt
+          fi
+          #Screen with ssh support
+          #if [ "$TERM" != "screen" ] && [ "$SSH_CONNECTION" != "" ]; then
+          #  /usr/bin/screen -ls sshscreen || /usr/bin/screen -dmS sshscreen
+          #  echo "SSH no active"
+          #  /usr/bin/screen -S sshscreen -D -RR  && exit
+          #fi
+
+    - name: Klone Beispieldateien
+      git:
+        repo: https://gitlab.com/kraeml/tuxcademy-grundlagen-uebungen.git
+        dest: /home/vagrant/dateien
+
+    #- name: Get Tuxcadamy Dateien
+    #  get_url:
+    #    url: https://gitlab.franken.de/kraeml/Tuxcademy-Grundlagen-Uebungen/-/archive/master/Tuxcademy-Grundlagen-Uebungen-master.zip
+    #    dest: "/tmp/data.zip"
+    #    validate_certs: no
+
+    #- name: Unzip Tuxcadamy Dateien
+    #  unarchive:
+    #    src: /tmp/data.zip
+    #    dest: "/tmp/"
+
+    #- name: stat Tuxcadamy
+    #  stat: path=/tmp/Tuxcademy-Grundlagen-Uebungen-master
+    #  register: tux_stat
+
+    #- name: Move foo to bar
+    #  command: "mv /tmp/Tuxcademy-Grundlagen-Uebungen-master {{ansible_user_dir}}/data"
+    #  when: tux_stat.stat.exists

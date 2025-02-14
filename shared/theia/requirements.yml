@@ -1,0 +1,9 @@
+---
+ # from Github, overriding the name and specifying a specific tag
+- src: https://github.com/kraeml/ansible_role_theia_ide
+  name: rdf.theia_ide
+  version: master
+- src: geerlingguy.composer
+- src: geerlingguy.php
+- src: geerlingguy.mysql
+- src: geerlingguy.nginx

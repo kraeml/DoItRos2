@@ -1,0 +1,111 @@
+---
+- hosts: all
+  #become: yes
+  gather_facts: yes
+
+  tasks:
+  - name: "Install needed packages"
+    become: yes
+    apt:
+      name:
+        - python3
+        - python3-pip
+        - python3-virtualenv
+      state: present
+      update_cache: yes
+      cache_valid_time: 3600
+    tags:
+      - install
+
+  - name: Stat platformio dir
+    stat:
+      path: "{{ansible_user_dir}}/.platformio/penv/bin"
+    register: pio_dir
+
+  - name: Get platformio installer script
+    get_url:
+      url: https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py
+      dest: /tmp/get-platformio.py
+    when: pio_dir.stat.islnk is not defined
+
+  - name: Execute the platformio installer script
+    shell: python3 /tmp/get-platformio.py
+    args:
+      creates: "{{ansible_user_dir}}/.platformio/penv"
+
+  - name: Remove the platformio installer script
+    file:
+      path: /tmp/get-platformio.py
+      state: absent
+
+  - name: Get udev roles
+    become: yes
+    get_url:
+      url: https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/system/99-platformio-udev.rules
+      dest: /etc/udev/rules.d/99-platformio-udev.rules
+
+  - name: Configure profile for platformio
+    blockinfile:
+      path: "{{ansible_user_dir}}/.bashrc"
+      marker: "# {mark} ANSIBLE MANAGED BLOCK platformio"
+      block: |
+        #if [ -d ~/.platformio/penv/bin ]; then
+        #  export PATH=$PATH:~/.platformio/penv/bin
+        #fi
+
+  - name: Install platformio platforms
+    shell: "{{ansible_user_dir}}/.platformio/penv/bin/pio platform install {{item}}"
+    changed_when: false
+    with_items:
+      - espressif32
+      - espressif8266
+      - atmelmegaavr
+      - atmelsam
+      - atmelavr
+      - nordicnrf51
+      - linux_x86_64
+      - lattice_ice40
+
+  - name: Install platformio libs
+    shell: "{{ansible_user_dir}}/.platformio/penv/bin/pio lib --global install {{item}}"
+    changed_when: false
+    with_items:
+      #Error: Could not find the package with 'ESP8266_SSD1306' requirements for your system 'linux_x86_64'
+      # - ESP8266_SSD1306
+      - Ftduino
+      - FtduinoSimple
+
+  - name: Upgrade platformio
+    shell: "{{ansible_user_dir}}/.platformio/penv/bin/pio {{item}}"
+    changed_when: False
+    with_items:
+      - upgrade
+      - update
+
+  - name: default User in group diealout
+    become: yes
+    user:
+      append: yes
+      groups: dialout
+      name: "{{ansible_user_id}}"
+
+  - name: Install apio
+    pip:
+      name: apio
+      virtualenv: "{{ansible_user_dir}}/.platformio/penv"
+    tags:
+      - apio
+      - apio[blackiceprog]
+
+  - name: Upgrade apio and install FPGAs
+    shell: "{{ansible_user_dir}}/.platformio/penv/bin/apio {{item}}"
+    changed_when: False
+    with_items:
+      - upgrade
+      - install system
+      - install examples
+      - install scons
+      - install yosys
+      - install ice40
+    tags:
+      - apio

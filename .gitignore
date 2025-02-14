@@ -1,0 +1,13 @@
+*/packer_cache/*
+*/output-virtualbox-iso/*
+*.box
+iso/*
+.vagrant/*
+ubuntu2004/Vagrantfile*
+ubuntu2004-de/
+packer.log
+*_de_sa*
+ubuntu2004/scripts/cleanup.sh
+venv/
+ubuntu2004/scripts/cleanup.sh
+vagrant_ssh-config
