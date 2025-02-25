@@ -11,14 +11,18 @@
     },
     {
       "type": "ansible-local",
-      "playbook_file": "./shared/main.yml",
-      "galaxy_roles_path": "./roles",
-      "galaxy_file": "./shared/requirements.yml"
+      "playbook_file": "./shared/main.yml"
     },
     {
       "type": "shell",
       "execute_command": "echo 'vagrant' | {{.Vars}} sudo -S -E bash '{{.Path}}'",
       "script": "./scripts/locale-de.sh"
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "./shared/ros2/main.yml",
+      "galaxy_roles_path": "./roles",
+      "galaxy_file": "./shared/ros2/requirements.yml"
     },
     {
       "type": "shell",
@@ -29,7 +33,7 @@
   "builders": [
   {
     "type": "vagrant",
-    "source_path": "doitpib",
+    "source_path": "doitpib/ubuntu-desktop-noble-de",
     "provider": "virtualbox",
     "communicator": "ssh",
     "output_dir": "./output-vagrant",
