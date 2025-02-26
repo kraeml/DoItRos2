@@ -1,0 +1,214 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    ros2_distribution: jazzy
+    # Default username and group for catkin_ws installation
+    # https://moveit.ai/install-moveit2/source/
+    ros2_packages:
+      - foxglove-bridge
+      - generate-parameter-library
+      - turtlesim
+
+    ros2_user:
+        name: vagrant
+        group: vagrant
+    
+    packages:
+      - python3-pip
+      - python3-venv
+      - build-essential
+      - cmake
+      - git
+      - python3-colcon-common-extensions
+      - python3-flake8
+      - python3-rosdep
+      - python3-setuptools
+      - python3-vcstool
+      - wget
+      - ros-dev-tools
+
+    de_packages:
+      - thunderbird-locale-de
+      - thunderbird-locale-en
+      - thunderbird-locale-en-gb
+      - thunderbird-locale-en-us
+      - mythes-de
+      - mythes-de-ch
+      - mythes-en-au
+      - libreoffice-help-de
+      - libreoffice-l10n-en-za
+      - libreoffice-l10n-en-gb
+      - libreoffice-l10n-de
+      - hunspell-de-ch-frami
+      - hunspell-de-de-frami
+      - hunspell-de-at-frami
+      - gnome-user-docs-de
+      - hyphen-en-ca
+      - hyphen-en-gb
+      - hyphen-de
+      - libreoffice-help-en-gb
+      - chromium-browser-l10n
+
+
+  roles:
+    - rarrais.ros2
+
+  tasks:
+    # https://moveit.ai/install-moveit2/source/
+    # https://moveit.ai/install-moveit2/source/#uninstall-any-pre-existing-moveit-debians
+    - name: Install packeges beginner tutorial with apt-get because ansible apt support no regex
+      ansible.builtin.command: apt-get remove --yes ~nros-jazzy--moveit*
+      changed_when: false
+
+    - name: Install packeges
+      ansible.builtin.apt:
+        name: "{{item}}"
+        cache_valid_time: 3600
+        update_cache: yes
+      loop: "{{packages}}"
+    
+    - name: Install Moveit
+      become_user: vagrant
+      become_method: su 
+      become_flags: --login
+      ansible.builtin.shell: |
+        #-su --login vagrant
+        source /home/vagrant/.bashrc
+        export ROS_DISTRO={{ros2_distribution}}
+        export ROS_PYTHON_VERSION=3
+        export ROS_VERSION=2
+        source /opt/ros/jazzy/setup.bash
+        export PATH=/opt/ros/jazzy/opt/gz_tools_vendor/bin:/opt/ros/jazzy/bin:/home/vagrant/google-cloud-sdk/bin:/home/vagrant/.rbenv/shims:/home/vagrant/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
+        echo $ROS_DISTRO as $USER
+        if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]
+        then
+          sudo rosdep init
+        fi
+        rosdep update
+        export COLCON_WS=/home/vagrant/ws_moveit2/
+        
+        if [ ! -d $COLCON_WS/src ]
+        then
+          mkdir -p $COLCON_WS/src
+          cd $COLCON_WS/src
+          git clone https://github.com/moveit/moveit2.git -b $ROS_DISTRO
+        else
+          cd $COLCON_WS/src
+        fi
+        for repo in moveit2/moveit2.repos $(f="moveit2/moveit2_$ROS_DISTRO.repos"; test -r $f && echo $f)
+        do 
+          vcs import < "$repo"
+        done
+        rosdep install -r --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
+        # Could not build in packer but in nativ
+        cd $COLCON_WS
+        colcon build --allow-overriding moveit_common moveit_core moveit_ros_planning --event-handlers desktop_notification- status- --cmake-args -DCMAKE_BUILD_TYPE=Release || true
+      args:
+        executable: /usr/bin/bash
+      changed_when: false
+      register: colcon_build
+      #ignore_errors: yes
+
+    - ansible.builtin.debug:
+        var: colcon_build
+
+    - name: Read-write git checkout from github
+      become_user: vagrant
+      ansible.builtin.git:
+        repo: "{{item.repo}}"
+        dest: "{{item.dest}}"
+        update: no
+      loop:
+        - repo: https://github.com/DUDULRX/waveshare_roarm_sdk.git
+          dest: /home/vagrant/waveshare_roarm_sdk
+        - repo: https://github.com/DUDULRX/roarm_ws.git
+          dest: /home/vagrant/roarm_ws
+        - repo: https://github.com/pib-rocks/pib-backend
+          dest: /home/vagrant/pib-backend
+
+    #- name: Install Python dependencies
+    #  ansible.builtin.pip:
+    #    requirements: /home/vagrant/waveshare_roarm_sdk/requirements.txt
+
+    #- name: Install waveshare roarm sdk
+    #  ansible.builtin.command:
+    #    cmd: python3 setup.py install
+    #    chdir: /home/vagrant/waveshare_roarm_sdk
+    #  changed_when: false
+
+    # sudo apt install '~nros-jazzy-rqt*' Packages to install for turtle tutorial
+    # https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Introducing-Turtlesim/Introducing-Turtlesim.html#install-rqt
+    - name: Install packeges beginner tutorial with apt-get because ansible apt support no regex
+      ansible.builtin.command: apt-get install --yes ~nros-jazzy-rqt*
+      changed_when: false
+
+    # echo /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash >> ~/.bashrc
+    # For autocompletion colcon
+    # sudo snapp install code --classic
+    - name: Install code via snap
+      community.general.snap:
+        classic: yes
+        name: code
+
+    - name: Ensure a locale exists
+      community.general.locale_gen:
+        name: de_DE.UTF-8
+        state: present
+
+    - name: Ensure de is set
+      ansible.builtin.lineinfile:
+        regexp: XKBLAYOUT="gb"
+        line: XKBLAYOUT="de"
+        path: /etc/default/keyboard
+        
+    
+    # Install locale for desktop packeges
+    - name: Install de packeges
+      ansible.builtin.apt:
+        name: "{{item}}"
+        cache_valid_time: 3600
+        update_cache: yes
+      loop: "{{de_packages}}"
+
+    # GUI Loss Problem
+    # https://www.waveshare.com/wiki/RoArm-M2-S_ROS2_Getting_Started_Tutorial#GUI_Loss_Problem
+    - name: Install tasksel
+      ansible.builtin.apt:
+        name: tasksel
+        cache_valid_time: 3600
+        update_cache: yes
+
+    - name: Install Ubuntu Desktop via tasksel
+      ansible.builtin.command: tasksel install ubuntu-desktop
+      changed_when: false
+
+    - name: Install ubuntu-desktop
+      ansible.builtin.apt:
+        name:
+          - ubuntu-desktop
+        cache_valid_time: 3600
+        update_cache: yes
+
+    - name: Unarchive a file that needs to be downloaded (added in 2.0)
+      ansible.builtin.unarchive:
+        src: "{{item.src}}"
+        dest: "/home/vagrant/"
+        owner: vagrant
+        group: vagrant
+        remote_src: yes
+      loop:
+        - src: https://files.waveshare.com/wiki/RoArm-M2-S/Roarm_ws_em0.zip
+          path: "Roarm_ws_em0"
+        - src: https://files.waveshare.com/wiki/RoArm-M2-S/Roarm_ws_em1.zip
+          path: "Roarm_ws_em1"
+
+    - name: Set owner of /home/vagrant
+      ansible.builtin.file:
+        path: /home/vagrant
+        owner: vagrant
+        group: vagrant
+        recurse: yes
+
+
+

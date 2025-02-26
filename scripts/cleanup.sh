@@ -5,6 +5,12 @@
 #apt -y remove --purge ansible
 #apt-add-repository --remove ppa:ansible/ansible
 
+if [ -f /etc/apt/trusted.gpg ]
+then
+    cat /etc/apt/trusted.gpg >> /etc/apt/trusted.gpg.d/trusted.gpg
+    rm /etc/apt/trusted.gpg
+fi
+
 # Apt cleanup.
 apt-get update
 apt-get dist-upgrade --yes
