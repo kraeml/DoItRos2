@@ -2,7 +2,7 @@
 - hosts: all
   become: yes
   vars:
-    ros2_distribution: jazzy
+    ros2_distribution: humble
     # Default username and group for catkin_ws installation
     # https://moveit.ai/install-moveit2/source/
     ros2_packages:
