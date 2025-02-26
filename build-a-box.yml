@@ -16,7 +16,7 @@
   - block:
     - name: Get current box version from Vagrant.
       uri:
-        url: 'https://vagrantcloud.com/api/v2/vagrant/doitpib/ubuntu-desktop-noble-de'
+        url: 'https://vagrantcloud.com/api/v2/vagrant/doitpib/ubuntu-desktop-jammy-de'
         return_content: true
       register: box_info
 
@@ -42,7 +42,7 @@
 
   - name: Print info about current box.
     debug:
-      msg: "Building new doitpib/ubuntu-desktop-noble-de box version {{ new_box_version }}"
+      msg: "Building new doitpib/ubuntu-desktop-jammy-de box version {{ new_box_version }}"
     tags:
       - doitros2
 

@@ -33,19 +33,20 @@
   "builders": [
   {
     "type": "vagrant",
-    "source_path": "doitpib/ubuntu-desktop-noble-de",
+    "source_path": "doitpib/ubuntu-desktop-jammy-de",
     "provider": "virtualbox",
     "communicator": "ssh",
     "output_dir": "./output-vagrant",
     "ssh_username": "vagrant",
     "ssh_password": "vagrant",
-    "ssh_timeout": "30m"
+    "ssh_timeout": "30m",
+    "template": "./Vagrantfile.template"
   }
 ],
   "post-processors": [
   {
     "type": "shell-local",
-    "inline": ["cp ./output-vagrant/package.box ./builds/ubuntu-desktop-noble-de.box && rm -rf ./output-vagrant"]
+    "inline": ["cp ./output-vagrant/package.box ./builds/ubuntu-desktop-jammy-de.box && rm -rf ./output-vagrant"]
   },
   [
     ]

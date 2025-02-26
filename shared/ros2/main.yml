@@ -21,6 +21,7 @@
       - cmake
       - git
       - python3-colcon-common-extensions
+      - python3-colcon-mixin
       - python3-flake8
       - python3-rosdep
       - python3-setuptools
@@ -68,47 +69,88 @@
         update_cache: yes
       loop: "{{packages}}"
     
-    - name: Install Moveit
+    # This script sets up a ROS environment, removes unnecessary packages, initializes rosdep, 
+    # clones a MoveIt2 tutorial repository, adds a default mixin repository, installs dependencies,
+    # and builds the project using colcon.
+    # https://moveit.picknik.ai/humble/doc/tutorials/tutorials.html
+    # https://aleksandarhaber.com/how-to-move-robot-using-moveit-2-in-rviz-and-ros2-and-how-to-perform-motion-planning/
+    - name: Install Moveit Tutorial
       become_user: vagrant
       become_method: su 
       become_flags: --login
       ansible.builtin.shell: |
-        #-su --login vagrant
         source /home/vagrant/.bashrc
-        export ROS_DISTRO={{ros2_distribution}}
-        export ROS_PYTHON_VERSION=3
-        export ROS_VERSION=2
-        source /opt/ros/jazzy/setup.bash
-        export PATH=/opt/ros/jazzy/opt/gz_tools_vendor/bin:/opt/ros/jazzy/bin:/home/vagrant/google-cloud-sdk/bin:/home/vagrant/.rbenv/shims:/home/vagrant/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
+        
+        # Set the ROS distribution environment variable
+        export ROS_DISTRO=${ROS_DISTRO:={{ros2_distribution}}}
+        
+        # Set the ROS Python version (default is 3)
+        export ROS_PYTHON_VERSION=${ROS_PYTHON_VERSION:=3}
+
+        # Set the ROS version (default is 2)
+        export ROS_VERSION=${ROS_VERSION:=2}
+
+        # Source the ROS setup file for the specified distribution
+        source /opt/ros/${ROS_DISTRO}/setup.bash
+
+        # Update the PATH environment variable to include ROS-related directories
+        export PATH=/opt/ros/${ROS_DISTRO}/opt/gz_tools_vendor/bin:/opt/ros/${ROS_DISTRO}/bin:/home/vagrant/google-cloud-sdk/bin:/home/vagrant/.rbenv/shims:/home/vagrant/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
+        
+        # Set the COLCON workspace directory
+        export COLCON_WS=/home/vagrant/ws_moveit2/
         echo $ROS_DISTRO as $USER
+
+        # Remove ROS MoveIt packages
+        # sudo apt remove ros-$ROS_DISTRO-moveit*
+
+        # Clean up unused dependencies
+        sudo apt autoremove
+
+        # Update package lists and upgrade installed packages
+        sudo apt update
+        sudo apt dist-upgrade --yes
+
+        # Initialize rosdep if it doesn't exist
         if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]
         then
           sudo rosdep init
         fi
-        rosdep update
-        export COLCON_WS=/home/vagrant/ws_moveit2/
-        
+
+        # Update rosdep sources
+        rosdep update || true
+
+        # rm -rf $COLCON_WS
+
+        # Create the src directory if it doesn't exist
         if [ ! -d $COLCON_WS/src ]
         then
           mkdir -p $COLCON_WS/src
           cd $COLCON_WS/src
-          git clone https://github.com/moveit/moveit2.git -b $ROS_DISTRO
+          # Clone the MoveIt2 tutorials repository
+          git clone -b ${ROS_DISTRO} https://github.com/moveit/moveit2_tutorials
         else
           cd $COLCON_WS/src
         fi
-        for repo in moveit2/moveit2.repos $(f="moveit2/moveit2_$ROS_DISTRO.repos"; test -r $f && echo $f)
-        do 
-          vcs import < "$repo"
-        done
+
+        # Add default mixin repository and update the default mixin repository
+        colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml
+        colcon mixin update default
+
+        # Import MoveIt2 tutorials repository recursively
+        vcs import --recursive < moveit2_tutorials/moveit2_tutorials.repos
+
+        # Update package lists
+        sudo apt update
+
+        # Install dependencies for the project
         rosdep install -r --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
-        # Could not build in packer but in nativ
-        cd $COLCON_WS
-        colcon build --allow-overriding moveit_common moveit_core moveit_ros_planning --event-handlers desktop_notification- status- --cmake-args -DCMAKE_BUILD_TYPE=Release || true
+
+        # Build the project using colcon
+        colcon build --executor sequential --mixin release
       args:
         executable: /usr/bin/bash
       changed_when: false
       register: colcon_build
-      #ignore_errors: yes
 
     - ansible.builtin.debug:
         var: colcon_build
