@@ -59,7 +59,7 @@
     # https://moveit.ai/install-moveit2/source/
     # https://moveit.ai/install-moveit2/source/#uninstall-any-pre-existing-moveit-debians
     - name: Install packeges beginner tutorial with apt-get because ansible apt support no regex
-      ansible.builtin.command: apt-get remove --yes ~nros-jazzy--moveit*
+      ansible.builtin.command: apt-get remove --yes ~nros-humble--moveit*
       changed_when: false
 
     - name: Install packeges
@@ -179,10 +179,10 @@
     #    chdir: /home/vagrant/waveshare_roarm_sdk
     #  changed_when: false
 
-    # sudo apt install '~nros-jazzy-rqt*' Packages to install for turtle tutorial
+    # sudo apt install '~nros-humble-rqt*' Packages to install for turtle tutorial
     # https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Introducing-Turtlesim/Introducing-Turtlesim.html#install-rqt
     - name: Install packeges beginner tutorial with apt-get because ansible apt support no regex
-      ansible.builtin.command: apt-get install --yes ~nros-jazzy-rqt*
+      ansible.builtin.command: apt-get install --yes ~nros-humble-rqt*
       changed_when: false
 
     # echo /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash >> ~/.bashrc
