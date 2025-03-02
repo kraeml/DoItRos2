@@ -13,3 +13,4 @@ ubuntu2004/scripts/cleanup.sh
 vagrant_ssh-config
 output-vagrant/
 ros2_ws/
+ssh-config

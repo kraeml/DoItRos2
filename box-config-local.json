@@ -40,7 +40,8 @@
     "ssh_username": "vagrant",
     "ssh_password": "vagrant",
     "ssh_timeout": "30m",
-    "template": "./Vagrantfile.template"
+    "template": "./Vagrantfile.template",
+    "synced_folder": "./"
   }
 ],
   "post-processors": [
