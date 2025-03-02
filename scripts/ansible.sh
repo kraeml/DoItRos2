@@ -7,7 +7,7 @@ then
 fi
 
 # Install Ansible repository.
-if [ ! -f /etc/apt/sources.list.d/ansible-ubuntu-ansible-noble.sources ]
+if [ ! -f /etc/apt/sources.list.d/ansible-ubuntu-ansible-jammy.sources ]
 then
     apt-get update --yes && apt-get --yes upgrade
     apt-get --yes install software-properties-common

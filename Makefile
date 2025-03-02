@@ -8,7 +8,7 @@ clean:
 add:
 	vagrant destroy --force || true
 	vagrant box remove --force doitpib || true
-	vagrant box add doitpib ./builds/ubuntu-desktop-noble-de.box
+	vagrant box add doitpib ./builds/ubuntu-desktop-jammy-de.box
 
 up:
 	VAGRANT_VAGRANTFILE=Vagrantfile-doitpib vagrant up

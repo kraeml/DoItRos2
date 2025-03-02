@@ -13,8 +13,8 @@
   "builders": [
   {
     "type": "vagrant",
-    "source_path": "doitpib/ubuntu-desktop-noble-de",
-    "box_name": "doitpib/ubuntu-desktop-noble-de",
+    "source_path": "doitpib/ubuntu-desktop-jammy-de",
+    "box_name": "doitpib/ubuntu-desktop-jammy-de",
     "provider": "virtualbox",
     "template": "Vagrantfile.template",
     "communicator": "ssh"
@@ -23,7 +23,7 @@
   "post-processors": [
   {
     "type": "shell-local",
-    "inline": ["cp ./output-vagrant/package.box ./builds/doitpib/ubuntu-desktop-noble-de"]
+    "inline": ["cp ./output-vagrant/package.box ./builds/doitpib/ubuntu-desktop-jammy-de"]
   },
   [
     ]
