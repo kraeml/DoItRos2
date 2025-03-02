@@ -28,6 +28,10 @@
       - python3-vcstool
       - wget
       - ros-dev-tools
+      - tree
+      - vim
+      # https://stackabuse.com/managing-python-environments-with-direnv-and-pyenv/
+      - direnv
 
     de_packages:
       - thunderbird-locale-de
@@ -56,10 +60,39 @@
     - rarrais.ros2
 
   tasks:
+    - name: Read-write git checkout from github
+      become_user: vagrant
+      ansible.builtin.git:
+        repo: "{{item.repo}}"
+        dest: "{{item.dest}}"
+        update: no
+      loop:
+        - repo: https://github.com/DUDULRX/waveshare_roarm_sdk.git
+          dest: /home/vagrant/waveshare_roarm_sdk
+        - repo: https://github.com/DUDULRX/roarm_ws.git
+          dest: /home/vagrant/roarm_ws
+        - repo: https://github.com/pib-rocks/pib-backend
+          dest: /home/vagrant/pib-backend
+        - repo: https://github.com/wentasah/ros-direnv.git
+          dest: /home/vagrant/ros-direnv
+    
+    - name: Wayland deactivate
+      lineinfile:
+        path: "{{item.path}}"
+        line: "{{item.line}}"
+        regexp: "{{item.regexp}}"
+      loop:
+        - path: /etc/gdm3/custom.conf 
+          line: WaylandEnable=false
+          regexp: ^#WaylandEnable=false
+        - path: /etc/ssh/sshd_config
+          line: X11Forwarding yes
+          regexp: ^#X11Forwarding
+
     # https://moveit.ai/install-moveit2/source/
     # https://moveit.ai/install-moveit2/source/#uninstall-any-pre-existing-moveit-debians
     - name: Install packeges beginner tutorial with apt-get because ansible apt support no regex
-      ansible.builtin.command: apt-get remove --yes ~nros-humble--moveit*
+      ansible.builtin.command: apt-get remove --yes ~nros-humble-moveit*
       changed_when: false
 
     - name: Install packeges
@@ -155,19 +188,6 @@
     - ansible.builtin.debug:
         var: colcon_build
 
-    - name: Read-write git checkout from github
-      become_user: vagrant
-      ansible.builtin.git:
-        repo: "{{item.repo}}"
-        dest: "{{item.dest}}"
-        update: no
-      loop:
-        - repo: https://github.com/DUDULRX/waveshare_roarm_sdk.git
-          dest: /home/vagrant/waveshare_roarm_sdk
-        - repo: https://github.com/DUDULRX/roarm_ws.git
-          dest: /home/vagrant/roarm_ws
-        - repo: https://github.com/pib-rocks/pib-backend
-          dest: /home/vagrant/pib-backend
 
     #- name: Install Python dependencies
     #  ansible.builtin.pip:
