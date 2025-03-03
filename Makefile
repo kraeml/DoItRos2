@@ -3,7 +3,7 @@
 all: build add up
 
 clean:
-	rm -rf output || true
+	rm -rf output-vagrant || true
 	
 add:
 	vagrant destroy --force || true

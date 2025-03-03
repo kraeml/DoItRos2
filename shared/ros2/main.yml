@@ -32,6 +32,7 @@
       - vim
       # https://stackabuse.com/managing-python-environments-with-direnv-and-pyenv/
       - direnv
+      - screen
 
     de_packages:
       - thunderbird-locale-de
@@ -205,8 +206,7 @@
       ansible.builtin.command: apt-get install --yes ~nros-humble-rqt*
       changed_when: false
 
-    # echo /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash >> ~/.bashrc
-    # For autocompletion colcon
+    
     # sudo snapp install code --classic
     - name: Install code via snap
       community.general.snap:
@@ -259,18 +259,39 @@
         owner: vagrant
         group: vagrant
         remote_src: yes
+        creates: "/home/vagrant/{{item.path}}"
       loop:
         - src: https://files.waveshare.com/wiki/RoArm-M2-S/Roarm_ws_em0.zip
           path: "Roarm_ws_em0"
         - src: https://files.waveshare.com/wiki/RoArm-M2-S/Roarm_ws_em1.zip
           path: "Roarm_ws_em1"
+        - src: https://download.jetbrains.com/python/pycharm-community-2023.1.1.tar.gz
+          path: ros2_workspace_pycharm
+    # echo /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash >> ~/.bashrc
+    
+    - name: Create an alias for pycharm_ros2
+      ansible.builtin.lineinfile:
+        path: /home/vagrant/.bashrc
+        line: "{{item.line}}"
+        regexp: "{{item.regexp}}"
+      loop:
+        - line: # Alias for PyCharm, as instructed in https://ros2-tutorial.readthedocs.io
+          regexp: ^# Alias for PyCharm, as instructed in https://ros2-tutorial.readthedocs.io
+        - line: alias pycharm_ros2=~/ros2_workspace_pycharm/pycharm-community-2023.1.1/bin/pycharm.sh
+          regexp: ^alias pycharm_ros2=~/ros2_workspace_pycharm/pycharm-community-2023.1.1/bin/pycharm.sh
+        - line: # For autocompletion colcon
+          regexp: ^# For autocompletion colcon
+        - line: /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash
+          regexp: ^/usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash
 
-    - name: Set owner of /home/vagrant
+    - name: Set owner of /home/vagrant. Failed because snap is read-only.
+      become: yes
       ansible.builtin.file:
         path: /home/vagrant
         owner: vagrant
         group: vagrant
         recurse: yes
+      failed_when: false
 
 
 
