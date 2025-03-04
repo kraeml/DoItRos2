@@ -1,3 +1,5 @@
 ---
 - name: rarrais.ros2
   src: https://github.com/n0wis/ansible-role-ros2
+- name: geerlingguy.pip
+- name: geerlingguy.docker
