@@ -1,10 +1,12 @@
 # DoItRos2
 
-![QR Code https://github.com/kraeml/DoItRos2](./picts/github.png)
+![QR Code https://github.com/kraeml/DoItRos2](./picts/github.png) 
 
 ## Projektabstrakt
 
 DoItRos2 stellt eine vorkonfigurierte Ubuntu 22.04 Vagrant Maschine zur Verfügung, auf der ROS2 Humble bereits installiert und einsatzbereit ist. Dieses Projekt ermöglicht es Entwicklern und Forschern, schnell und einfach mit ROS2 zu arbeiten, ohne sich um die komplexe Installation und Konfiguration kümmern zu müssen.
+
+![Screwnshot from DoItRos2 with X11 forwarding](./picts/screenshot_simple_medium.png)
 
 ## Voraussetzungen
 
