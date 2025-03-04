@@ -31,13 +31,13 @@ if [[ -f /etc/apt/apt.conf.d/01proxy ]]; then
   rm /etc/apt/apt.conf.d/01proxy
 fi
 
-echo Delete unneeded files.
+echo 'Delete unneeded files.'
 rm -f /home/vagrant/*.sh
 
-#echo Zero out the rest of the free space using dd, then delete the written file.
+echo 'Zero out the rest of the free space using dd, then delete the written file.'
 dd if=/dev/zero of=/EMPTY bs=1M || true
-#echo Remove EMPTY file
+echo Remove EMPTY file
 rm -f /EMPTY || true
 
-#echo Add sync so Packer doesn't quit too early, before the large file is deleted.
+echo "Add sync so Packer doesn't quit too early, before the large file is deleted."
 sync
