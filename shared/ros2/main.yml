@@ -33,6 +33,7 @@
       # https://stackabuse.com/managing-python-environments-with-direnv-and-pyenv/
       - direnv
       - screen
+      - htop
 
     de_packages:
       - thunderbird-locale-de
@@ -56,9 +57,16 @@
       - libreoffice-help-en-gb
       - chromium-browser-l10n
 
+    pip_install_packages:
+      - name: docker
 
+    docker_users:
+      - vagrant
+    
   roles:
     - rarrais.ros2
+    - geerlingguy.pip
+    - geerlingguy.docker
 
   tasks:
     - name: Read-write git checkout from github
@@ -76,6 +84,35 @@
           dest: /home/vagrant/pib-backend
         - repo: https://github.com/wentasah/ros-direnv.git
           dest: /home/vagrant/ros-direnv
+        - repo: https://github.com/mmmarinho/ROS2_Tutorial.git
+          dest: /home/vagrant/ROS2_Tutorial
+    
+    - name: Removes old workspace
+      ansible.builtin.file:
+        path: "/home/vagrant/pycharm-community-2023.1.1"
+        state: absent
+
+    - name: Creates pycharm workspace
+      ansible.builtin.file:
+        path: "/home/vagrant/ros2_workspace_pycharm"
+        state: directory
+
+    - name: Unarchive a file that needs to be downloaded (added in 2.0)
+      ansible.builtin.unarchive:
+        src: "{{item.src}}"
+        dest: "{{item.dest | default('/home/vagrant/')}}"
+        owner: vagrant
+        group: vagrant
+        remote_src: yes
+        creates: "{{item.dest | default('/home/vagrant/')}}{{item.path}}"
+      loop:
+        - src: https://files.waveshare.com/wiki/RoArm-M2-S/Roarm_ws_em0.zip
+          path: "roarm_ws_em0"
+        - src: https://files.waveshare.com/wiki/RoArm-M2-S/Roarm_ws_em1.zip
+          path: "roarm_ws_em1"
+        - src: https://download.jetbrains.com/python/pycharm-community-2023.1.1.tar.gz
+          path: "pycharm-community-2023.1.1"
+          dest: "/home/vagrant/ros2_workspace_pycharm/"
     
     - name: Wayland deactivate
       lineinfile:
@@ -251,23 +288,6 @@
           - ubuntu-desktop
         cache_valid_time: 3600
         update_cache: yes
-
-    - name: Unarchive a file that needs to be downloaded (added in 2.0)
-      ansible.builtin.unarchive:
-        src: "{{item.src}}"
-        dest: "/home/vagrant/"
-        owner: vagrant
-        group: vagrant
-        remote_src: yes
-        creates: "/home/vagrant/{{item.path}}"
-      loop:
-        - src: https://files.waveshare.com/wiki/RoArm-M2-S/Roarm_ws_em0.zip
-          path: "Roarm_ws_em0"
-        - src: https://files.waveshare.com/wiki/RoArm-M2-S/Roarm_ws_em1.zip
-          path: "Roarm_ws_em1"
-        - src: https://download.jetbrains.com/python/pycharm-community-2023.1.1.tar.gz
-          path: ros2_workspace_pycharm
-    # echo /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash >> ~/.bashrc
     
     - name: Create an alias for pycharm_ros2
       ansible.builtin.lineinfile:
