@@ -83,18 +83,70 @@
       ansible.builtin.git:
         repo: "{{item.repo}}"
         dest: "{{item.dest}}"
+        version: "{{item.version}}"
         update: no
       loop:
         - repo: https://github.com/DUDULRX/waveshare_roarm_sdk.git
           dest: /home/vagrant/waveshare_roarm_sdk
+          version: "main"
         - repo: https://github.com/DUDULRX/roarm_ws.git
           dest: /home/vagrant/roarm_ws
+          version: "ros2-humble"
         - repo: https://github.com/pib-rocks/pib-backend
           dest: /home/vagrant/pib-backend
+          version: "main"
         - repo: https://github.com/wentasah/ros-direnv.git
           dest: /home/vagrant/ros-direnv
+          version: "main"
         - repo: https://github.com/mmmarinho/ROS2_Tutorial.git
           dest: /home/vagrant/ROS2_Tutorial
+          version: "main"
+        - repo: https://github.com/EduArt-Robotik/edu_simulation.git
+          dest: /home/vagrant/eduart-simulator/src/edu_simulation
+          version: "main"
+        - repo: https://github.com/EduArt-Robotik/edu_robot.git
+          dest: /home/vagrant/eduart-simulator/src/edu_robot
+          version: "develop"
+    
+    - name: Build edu_robot and edu_simulation
+      become_user: vagrant
+      become_method: su 
+      become_flags: --login
+      ansible.builtin.shell: |
+        source /home/vagrant/.bashrc
+        
+        # Set the ROS distribution environment variable
+        export ROS_DISTRO=${ROS_DISTRO:={{ros2_distribution}}}
+        
+        # Set the ROS Python version (default is 3)
+        export ROS_PYTHON_VERSION=${ROS_PYTHON_VERSION:=3}
+
+        # Set the ROS version (default is 2)
+        export ROS_VERSION=${ROS_VERSION:=2}
+
+        # Source the ROS setup file for the specified distribution
+        source /opt/ros/${ROS_DISTRO}/setup.bash
+
+        # Update the PATH environment variable to include ROS-related directories
+        export PATH=/opt/ros/${ROS_DISTRO}/opt/gz_tools_vendor/bin:/opt/ros/${ROS_DISTRO}/bin:/home/vagrant/google-cloud-sdk/bin:/home/vagrant/.rbenv/shims:/home/vagrant/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
+        
+        # Set the COLCON workspace directory
+        export COLCON_WS= 
+        echo $ROS_DISTRO as $USER
+
+        cd ${COLCON_WS}
+        colcon build --packages-select {{item}} --event-handlers console_direct+ --symlink-install
+      args:
+        executable: /usr/bin/bash
+        chdir: /home/vagrant/eduart-simulator
+      loop:
+        - edu_robot
+        - edu_simulation
+      changed_when: false
+      register: colcon_build
+
+    - ansible.builtin.debug:
+        var: colcon_build
 
     - name: Prepare .bashrc for pycharm and autocompletion
       ansible.builtin.lineinfile:
@@ -131,8 +183,11 @@
 
     - name: Creates pycharm workspace
       ansible.builtin.file:
-        path: "/home/vagrant/ros2_workspace_pycharm"
+        path: "/home/vagrant/{{item}}"
         state: directory
+      loop:
+        - eduart-simulator/src
+        - ros2_workspace_pycharm
 
     - name: Unarchive a file that needs to be downloaded (added in 2.0)
       ansible.builtin.unarchive:
