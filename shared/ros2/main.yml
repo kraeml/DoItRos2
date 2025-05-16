@@ -131,7 +131,7 @@
         export PATH=/opt/ros/${ROS_DISTRO}/opt/gz_tools_vendor/bin:/opt/ros/${ROS_DISTRO}/bin:/home/vagrant/google-cloud-sdk/bin:/home/vagrant/.rbenv/shims:/home/vagrant/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
         
         # Set the COLCON workspace directory
-        export COLCON_WS= 
+        export COLCON_WS=/home/vagrant/eduart-simulator
         echo $ROS_DISTRO as $USER
 
         cd ${COLCON_WS}
@@ -176,15 +176,21 @@
           regexp: ^source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash
           insertafter: ^# For autocompletion colcon
     
-    - name: Removes old workspace
+    - name: Removes old unused directories
       ansible.builtin.file:
-        path: "/home/vagrant/pycharm-community-2023.1.1"
+        path: "/home/vagrant/{{item}}"
         state: absent
+      loop:
+        - pycharm-community-2023.1.1
+        - log
+        - install
+        - build
 
     - name: Creates pycharm workspace
       ansible.builtin.file:
         path: "/home/vagrant/{{item}}"
         state: directory
+        recurse: yes
       loop:
         - eduart-simulator/src
         - ros2_workspace_pycharm
@@ -280,7 +286,10 @@
         fi
 
         # Update rosdep sources
-        rosdep update || true
+        if [ ! -d /home/vagrant/.ros/rosdep/sources.cache ]
+        then
+          rosdep update
+        fi
 
         # rm -rf $COLCON_WS
 
@@ -291,10 +300,10 @@
           cd $COLCON_WS/src
           # Clone the MoveIt2 tutorials repository
           git clone -b ${ROS_DISTRO} https://github.com/moveit/moveit2_tutorials
-        else
-          cd $COLCON_WS/src
         fi
 
+        cd $COLCON_WS/src
+        
         # Add default mixin repository and update the default mixin repository
         colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml
         colcon mixin update default
@@ -307,7 +316,8 @@
 
         # Install dependencies for the project
         rosdep install -r --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
-
+        
+        cd $COLCON_WS
         # Build the project using colcon
         colcon build --executor sequential --mixin release
       args:

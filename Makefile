@@ -14,5 +14,6 @@ up:
 	VAGRANT_VAGRANTFILE=Vagrantfile-doitpib vagrant up
 
 build: clean
+	vagrant box update
 	PACKER_LOG=1 packer build box-config-local.json
 	
